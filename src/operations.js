@@ -1,254 +1,365 @@
+'use strict';
+
 const _ = require('lodash')
 const http = require('http')
-const moredots = require('moredots')
+const Filter = require('./resource_filter')
 
-module.exports = function (model, options) {
-  const buildQuery = require('./buildQuery')(options)
+module.exports = function(model, options) {
+	let buildQuery = require('./buildQuery')(options);
+	let filter = new Filter(model, {
+		private: options.private,
+		protected: options.protected
+	})
 
-  function findById (filteredContext, id) {
-    return filteredContext.findOne().and({
-      [options.idProperty]: id
-    })
-  }
+	function findById(filteredContext, id) {
+		let byId = {}
+		byId[options.idProperty] = id
+		return filteredContext.findOne().and(byId)
+	}
 
-  function getItems (req, res, next) {
-    options.contextFilter(model, req, (filteredContext) => {
-      let query = buildQuery(filteredContext.find(), req._ermQueryOptions).read(options.readPreference)
+	function* getItems(next) {
+		// Apply a context filter first, if it exists
+		let filteredContext = yield options.contextFilter(model);
 
-      query.lean(options.lean).exec().then((items) => {
-        req.erm.result = items
-        req.erm.statusCode = 200
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
 
-        if (options.totalCountHeader) {
-          query.skip(0).limit(0).count().then((count) => {
-            req.erm.totalCount = count
-            next()
-          }, (err) => {
-            err.statusCode = 400
-            options.onError(err, req, res, next)
-          })
-        } else {
-          next()
-        }
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    })
-  }
+		// Build the query
+		let query = buildQuery(filteredContext.find(), queryOptions);
 
-  function getCount (req, res, next) {
-    options.contextFilter(model, req, (filteredContext) => {
-      buildQuery(filteredContext.count(), req._ermQueryOptions).exec().then((count) => {
-        req.erm.result = { count: count }
-        req.erm.statusCode = 200
+		// Set read preference
+		query.read(options.readPreference);
 
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    })
-  }
+		let items = yield query.lean(options.lean).exec();
 
-  function getShallow (req, res, next) {
-    options.contextFilter(model, req, (filteredContext) => {
-      buildQuery(findById(filteredContext, req.params.id), req._ermQueryOptions).lean(options.lean).read(options.readPreference).exec().then((item) => {
-        if (!item) {
-          let err = new Error(http.STATUS_CODES[404])
-          err.statusCode = 404
-          return options.onError(err, req, res, next)
-        }
+		// Find more parameters
+		let populate = queryOptions.populate;
+		let opts = {
+			populate: populate,
+			access: restifyContext.access
+		};
 
-        for (let prop in item) {
-          item[prop] = typeof item[prop] === 'object' && prop !== '_id' ? true : item[prop]
-        }
+		// Filter items
+		items = filter.filterObject(items, opts);
 
-        req.erm.result = item
-        req.erm.statusCode = 200
+		restifyContext.result = items;
+		restifyContext.statusCode = 200;
 
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    })
-  }
+		if (options.totalCountHeader) {
+			restifyContext.totalCount = yield query.skip(0).limit(0).count().exec();
+			yield next;
+		} else {
+			yield next;
+		}
+	}
 
-  function deleteItems (req, res, next) {
-    options.contextFilter(model, req, (filteredContext) => {
-      buildQuery(filteredContext.find(), req._ermQueryOptions).remove().then(() => {
-        req.erm.statusCode = 204
+	function* getCount(next) {
+		// Apply a context filter first, if it exists
+		let filteredContext = yield options.contextFilter(model);
 
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    })
-  }
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
 
-  function getItem (req, res, next) {
-    options.contextFilter(model, req, (filteredContext) => {
-      buildQuery(findById(filteredContext, req.params.id), req._ermQueryOptions).lean(options.lean).read(options.readPreference).exec().then((item) => {
-        if (!item) {
-          let err = new Error(http.STATUS_CODES[404])
-          err.statusCode = 404
-          return options.onError(err, req, res, next)
-        }
+		let count = yield buildQuery(filteredContext.count(), queryOptions).exec();
 
-        req.erm.result = item
-        req.erm.statusCode = 200
+		restifyContext.result = {
+			count: count
+		};
+		restifyContext.statusCode = 200;
 
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    })
-  }
+		yield next;
+	}
 
-  function deleteItem (req, res, next) {
-    if (options.findOneAndRemove) {
-      options.contextFilter(model, req, (filteredContext) => {
-        findById(filteredContext, req.params.id).findOneAndRemove().then((item) => {
-          if (!item) {
-            let err = new Error(http.STATUS_CODES[404])
-            err.statusCode = 404
-            return options.onError(err, req, res, next)
-          }
+	function* getShallow(next) {
+		// Apply a context filter first, if it exists
+		let filteredContext = yield options.contextFilter(model);
 
-          req.erm.statusCode = 204
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
 
-          next()
-        }, (err) => {
-          err.statusCode = 400
-          options.onError(err, req, res, next)
-        })
-      })
-    } else {
-      req.erm.document.remove().then(() => {
-        req.erm.statusCode = 204
+		// Build the query
+		let item = yield buildQuery(findById(filteredContext, this.params.id), queryOptions)
+			.lean(options.lean)
+			.read(options.readPreference)
+			.exec();
 
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    }
-  }
+		if (!item) {
+			let err = new Error(http.STATUS_CODES[404])
+			err.statusCode = 404
+			return options.onError(err);
+		}
 
-  function createObject (req, res, next) {
-    req.body = options.filter.filterObject(req.body || {}, {
-      access: req.access,
-      populate: req._ermQueryOptions.populate
-    })
+		let populate = queryOptions.populate
+		let opts = {
+			populate: populate,
+			access: restifyContext.access
+		}
 
-    if (model.schema.options._id) {
-      delete req.body._id
-    }
+		item = filter.filterObject(item, opts)
 
-    if (model.schema.options.versionKey) {
-      delete req.body[model.schema.options.versionKey]
-    }
+		for (let prop in item) {
+			item[prop] = typeof item[prop] === 'object' && prop !== '_id' ? true : item[prop]
+		}
 
-    model.create(req.body).then((item) => model.populate(item, req._ermQueryOptions.populate || [])).then((item) => {
-      req.erm.result = item
-      req.erm.statusCode = 201
+		restifyContext.result = item
+		restifyContext.statusCode = 200
 
-      next()
-    }, (err) => {
-      err.statusCode = 400
-      options.onError(err, req, res, next)
-    })
-  }
+		yield next;
 
-  function modifyObject (req, res, next) {
-    req.body = options.filter.filterObject(req.body || {}, {
-      access: req.access,
-      populate: req._ermQueryOptions.populate
-    })
+	}
 
-    delete req.body._id
+	function* deleteItems(next) {
+		// Apply a context filter first, if it exists
+		let filteredContext = yield options.contextFilter(model);
 
-    if (model.schema.options.versionKey) {
-      delete req.body[model.schema.options.versionKey]
-    }
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
 
-    function depopulate (src) {
-      let dst = {}
+		// Build and run the query
+		yield buildQuery(filteredContext.find(), queryOptions).remove();
 
-      for (let key in src) {
-        const path = model.schema.path(key)
+		restifyContext.statusCode = 204;
 
-        if (path && path.caster && path.caster.instance === 'ObjectID') {
-          if (_.isArray(src[key])) {
-            for (let j = 0; j < src[key].length; ++j) {
-              if (typeof src[key][j] === 'object') {
-                dst[key] = dst[key] || {}
-                dst[key][j] = src[key][j]._id
-              }
-            }
-          } else if (_.isPlainObject(src[key])) {
-            dst[key] = src[key]._id
-          }
-        } else if (_.isPlainObject(src[key])) {
-          if (path && path.instance === 'ObjectID') {
-            dst[key] = src[key]._id
-          } else {
-            dst[key] = depopulate(src[key])
-          }
-        }
+		yield next;
+	}
 
-        if (_.isUndefined(dst[key])) {
-          dst[key] = src[key]
-        }
-      }
+	function* getItem(next) {
+		// Apply a context filter first, if it exists
+		let filteredContext = yield options.contextFilter(model);
 
-      return dst
-    }
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
 
-    const cleanBody = moredots(depopulate(req.body))
+		// Build the query
+		let item = yield buildQuery(findById(filteredContext, this.params.id), queryOptions)
+			.lean(options.lean)
+			.read(options.readPreference)
+			.exec();
 
-    if (options.findOneAndUpdate) {
-      options.contextFilter(model, req, (filteredContext) => {
-        findById(filteredContext, req.params.id).findOneAndUpdate({}, {
-          $set: cleanBody
-        }, {
-          new: true,
-          runValidators: options.runValidators
-        }).exec().then((item) => model.populate(item, req._ermQueryOptions.populate || [])).then((item) => {
-          if (!item) {
-            let err = new Error(http.STATUS_CODES[404])
-            err.statusCode = 404
-            return options.onError(err, req, res, next)
-          }
+		if (!item) {
+			let err = new Error(http.STATUS_CODES[404]);
+			err.statusCode = 404;
+			return options.onError(err)
+		}
 
-          req.erm.result = item
-          req.erm.statusCode = 200
+		let populate = queryOptions.populate
+		let opts = {
+			populate: populate,
+			access: restifyContext.access
+		}
 
-          next()
-        }, (err) => {
-          err.statusCode = 400
-          options.onError(err, req, res, next)
-        })
-      })
-    } else {
-      for (let key in cleanBody) {
-        req.erm.document.set(key, cleanBody[key])
-      }
+		item = filter.filterObject(item, opts);
 
-      req.erm.document.save().then((item) => model.populate(item, req._ermQueryOptions.populate || [])).then((item) => {
-        req.erm.result = item
-        req.erm.statusCode = 200
+		restifyContext.result = item;
+		restifyContext.statusCode = 200;
 
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    }
-  }
+		yield next;
 
-  return { getItems, getCount, getItem, getShallow, createObject, modifyObject, deleteItems, deleteItem }
+	}
+
+	function* deleteItem(next) {
+
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+
+		let byId = {}
+		byId[options.idProperty] = this.params.id
+
+		if (options.findOneAndRemove) {
+			// Apply a context filter first, if it exists
+			let filteredContext = yield options.contextFilter(model);
+
+			// Find the item and delete it
+			let item = yield findById(filteredContext, this.params.id).findOneAndRemove();
+
+			if (!item) {
+				let err = new Error(http.STATUS_CODES[404]);
+				err.statusCode = 404;
+				return options.onError(err);
+			}
+
+			restifyContext.statusCode = 204
+
+			yield next;
+
+		} else {
+			yield restifyContext.document.remove();
+			yield next;
+		}
+	}
+
+	function* createObject(next) {
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
+
+		let filterOpts = {
+			access: restifyContext.access,
+			populate: queryOptions.populate
+		};
+
+		this.request.body = filter.filterObject(this.request.body || {}, filterOpts);
+
+		if (model.schema.options._id) {
+			delete this.request.body._id;
+		}
+
+		if (model.schema.options.versionKey) {
+			delete this.request.body[model.schema.options.versionKey];
+		}
+
+		let item = model.create(this.request.body).then(function(item) {
+			return model.populate(item, queryOptions.populate || []);
+		});
+
+		item = filter.filterObject(item, filterOpts);
+
+		restifyContext.result = item;
+		restifyContext.statusCode = 201;
+
+		yield next;
+	}
+
+	function* modifyObject(next) {
+		// Get the module context and the query options
+		let restifyContext = this.state.restifyContext;
+		let queryOptions = restifyContext.queryOptions;
+
+		let filterOpts = {
+			access: restifyContext.access,
+			populate: queryOptions.populate
+		};
+
+		this.request.body = filter.filterObject(this.request.body || {}, filterOpts);
+		delete this.request.body._id
+
+		if (model.schema.options.versionKey) {
+			delete this.request.body[model.schema.options.versionKey];
+		}
+
+		function depopulate(src) {
+			let dst = {};
+
+			for (let key in src) {
+				let path = model.schema.path(key);
+
+				if (path && path.caster && path.caster.instance === 'ObjectID') {
+					if (_.isArray(src[key])) {
+						for (let j = 0; j < src[key].length; ++j) {
+							if (typeof src[key][j] === 'object') {
+								dst[key] = dst[key] || {};
+								dst[key][j] = src[key][j]._id;
+							}
+						}
+					} else if (_.isPlainObject(src[key])) {
+						dst[key] = src[key]._id;
+					}
+				} else if (_.isPlainObject(src[key])) {
+					if (path && path.instance === 'ObjectID') {
+						dst[key] = src[key]._id;
+					} else {
+						dst[key] = depopulate(src[key]);
+					}
+				}
+
+				if (typeof dst[key] === 'undefined') {
+					dst[key] = src[key];
+				}
+			}
+
+			return dst;
+		}
+
+		/* Recursively converts objects to dot notation
+		 * {
+		 *   favorites: {
+		 *     animal: 'Boar',
+		 *     color: 'Black'
+		 *   }
+		 * }
+		 * ...becomes:
+		 * {
+		 *   'favorites.animal': 'Boar',
+		 *   'favorites.color': 'Black',
+		 * }
+		 */
+		function flatten(src, dst, prefix) {
+			dst = dst || {};
+			prefix = prefix || '';
+
+			for (let key in src) {
+				if (_.isPlainObject(src[key])) {
+					flatten(src[key], dst, prefix + key + '.');
+				} else {
+					dst[prefix + key] = src[key];
+				}
+			}
+
+			return dst;
+		}
+
+		let cleanBody = flatten(depopulate(this.request.body))
+
+		if (options.findOneAndUpdate) {
+
+			// Apply a context filter first, if it exists
+			let filteredContext = yield options.contextFilter(model);
+
+			// Build the query
+			let item = findById(filteredContext, this.params.id).findOneAndUpdate({}, {
+				$set: cleanBody
+			}, {
+				new: true,
+				runValidators: options.runValidators
+			}).exec();
+
+			item = yield model.populate(item, queryOptions.populate || []);
+
+			if (!item) {
+				let err = new Error(http.STATUS_CODES[404]);
+				err.statusCode = 404;
+				return options.onError(err);
+			}
+
+			item = filter.filterObject(item, filterOpts)
+
+			restifyContext.result = item
+			restifyContext.statusCode = 200
+
+			yield next;
+
+		} else {
+			for (let key in cleanBody) {
+				restifyContext.document.set(key, cleanBody[key]);
+			}
+
+			let item = yield restifyContext.document.save().then(function(item) {
+				return model.populate(item, queryOptions.populate || []);
+			});
+
+			item = filter.filterObject(item, filterOpts);
+
+			restifyContext.result = item;
+			restifyContext.statusCode = 200;
+
+			yield next;
+
+		}
+	}
+
+	return {
+		getItems: getItems,
+		getCount: getCount,
+		getItem: getItem,
+		getShallow: getShallow,
+		createObject: createObject,
+		modifyObject: modifyObject,
+		deleteItems: deleteItems,
+		deleteItem: deleteItem
+	}
 }

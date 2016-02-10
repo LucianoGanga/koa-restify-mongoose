@@ -1,13 +1,8 @@
-module.exports = function (isExpress) {
-  return function output (req, res) {
-    if (isExpress) {
-      if (req.erm.result) {
-        res.status(req.erm.statusCode).json(req.erm.result)
-      } else {
-        res.sendStatus(req.erm.statusCode)
-      }
-    } else {
-      res.send(req.erm.statusCode, req.erm.result)
-    }
-  }
+module.exports = function* output(context, response) {
+	if (response.result) {
+		context.body = response.result;
+		context.status = response.statusCode;
+	} else {
+		context.status = response.statusCode;
+	}
 }

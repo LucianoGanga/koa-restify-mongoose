@@ -1,60 +1,48 @@
-const _ = require('lodash')
-const async = require('async')
+'use strict';
 
-module.exports = function (options, excludedMap) {
-  return function (req, res, next) {
-    let postMiddleware
+const _ = require('lodash');
 
-    switch (req.method.toLowerCase()) {
+module.exports = function(options) {
+
+  return function*(next) {
+    let restifyContext = this.state.restifyContext;
+
+    let postMiddleware;
+    switch (this.method.toLowerCase()) {
       case 'get':
-        postMiddleware = options.postRead
+        postMiddleware = options.postRead;
         break
       case 'post':
-        if (req.erm.statusCode === 201) {
-          postMiddleware = options.postCreate
+        if (restifyContext.statusCode === 201) {
+          postMiddleware = options.postCreate;
         } else {
-          postMiddleware = options.postUpdate
+          postMiddleware = options.postUpdate;
         }
         break
       case 'put':
       case 'patch':
-        postMiddleware = options.postUpdate
+        postMiddleware = options.postUpdate;
         break
       case 'delete':
-        postMiddleware = options.postDelete
+        postMiddleware = options.postDelete;
         break
     }
 
-    async.eachSeries(postMiddleware, (middleware, cb) => {
-      middleware(req, res, cb)
-    }, (err) => {
-      if (err) {
-        return options.onError(err, req, res, next)
-      }
+    // TODO: Fix the call to postMiddleware 
+    // yield postMiddleware(next);
 
-      // TODO: this will, but should not, filter /count queries
-      if (req.erm.result) {
-        let opts = {
-          access: req.access,
-          excludedMap: excludedMap,
-          populate: req._ermQueryOptions ? req._ermQueryOptions.populate : null
-        }
+    if (options.totalCountHeader && restifyContext.totalCount) {
+      this.set(_.isString(options.totalCountHeader) ? options.totalCountHeader : 'X-Total-Count', restifyContext.totalCount);
+    }
 
-        req.erm.result = options.filter ? options.filter.filterObject(req.erm.result, opts) : req.erm.result
-      }
+    yield options.outputFn(this, {
+      result: restifyContext.result,
+      statusCode: restifyContext.statusCode
+    });
 
-      if (options.totalCountHeader && req.erm.totalCount) {
-        res.header(_.isString(options.totalCountHeader) ? options.totalCountHeader : 'X-Total-Count', req.erm.totalCount)
-      }
+    if (options.postProcess) {
+      options.postProcess(next)
+    }
 
-      options.outputFn(req, res, {
-        result: req.erm.result,
-        statusCode: req.erm.statusCode
-      })
-
-      if (options.postProcess) {
-        options.postProcess(req, res, next)
-      }
-    })
   }
 }

@@ -1,28 +1,33 @@
-const http = require('http')
+'use strict';
 
-module.exports = function (model, options) {
-  return function (req, res, next) {
-    if (!req.params.id) {
-      return next()
+const http = require('http');
+
+module.exports = function(model, options) {
+  return function*(next) {
+
+    if (!this.params.id) {
+      return yield next;
+    }
+    // Get the module context and the query options
+    let restifyContext = this.state.restifyContext;
+
+    // Apply a context filter first, if it exists
+    let filteredContext = yield options.contextFilter(model);
+
+    let byId = {}
+    byId[options.idProperty] = this.params.id
+
+    // Build the query
+    let doc = yield filteredContext.findOne().and(byId).lean(false).read(options.readPreference).exec();
+
+    if (!doc) {
+      let err = new Error(http.STATUS_CODES[404]);
+      err.statusCode = 404;
+      return options.onError(err);
     }
 
-    options.contextFilter(model, req, (filteredContext) => {
-      filteredContext.findOne().and({
-        [options.idProperty]: req.params.id
-      }).lean(false).read(options.readPreference).exec().then((doc) => {
-        if (!doc) {
-          let err = new Error(http.STATUS_CODES[404])
-          err.statusCode = 404
-          return options.onError(err, req, res, next)
-        }
+    restifyContext.document = doc
 
-        req.erm.document = doc
-
-        next()
-      }, (err) => {
-        err.statusCode = 400
-        options.onError(err, req, res, next)
-      })
-    })
+    yield next;
   }
 }

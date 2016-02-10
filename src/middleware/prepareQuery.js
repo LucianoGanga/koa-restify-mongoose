@@ -1,127 +1,156 @@
+'use strict';
+
 const _ = require('lodash')
 
-module.exports = function (options) {
-  function jsonQueryParser (key, value) {
+module.exports = function(options) {
+
+  function jsonQueryParser(key, value) {
     if (_.isString(value)) {
       if (value[0] === '~') { // parse RegExp
-        return new RegExp(value.substr(1), 'i')
+        return new RegExp(value.substr(1), 'i');
       } else if (value[0] === '>') {
         if (value[1] === '=') {
-          return { $gte: value.substr(2) }
+          return {
+            $gte: value.substr(2)
+          };
         } else {
-          return { $gt: value.substr(1) }
+          return {
+            $gt: value.substr(1)
+          };
         }
       } else if (value[0] === '<') {
         if (value[1] === '=') {
-          return { $lte: value.substr(2) }
+          return {
+            $lte: value.substr(2)
+          };
         } else {
-          return { $lt: value.substr(1) }
+          return {
+            $lt: value.substr(1)
+          };
         }
       } else if (value[0] === '!' && value[1] === '=') {
-        return { $ne: value.substr(2) }
-      /* This feature was disabled because it requires MongoDB 3
-      } else if (value[0] === '=') {
-        return { $eq: value.substr(1) }*/
+        return {
+          $ne: value.substr(2)
+        };
+        /* This feature was disabled because it requires MongoDB 3
+        } else if (value[0] === '=') {
+          return { $eq: value.substr(1) }*/
       }
     } else if (_.isArray(value) && key[0] !== '$') {
-      return { $in: value }
+      return {
+        $in: value
+      };
     }
 
-    return value
+    return value;
   }
 
-  function parseQueryOptions (queryOptions) {
-    if (queryOptions.select && _.isString(queryOptions.select)) {
-      let select = queryOptions.select.split(',')
-      queryOptions.select = {}
+  function parseQueryOptions(queryOptions) {
+    let i, length, populate, select;
 
-      for (let i = 0, length = select.length; i < length; i++) {
-        if (select[i][0] === '-') {
-          queryOptions.select[select[i].substring(1)] = 0
-        } else {
-          queryOptions.select[select[i]] = 1
+    if (queryOptions.select) {
+      if (_.isString(queryOptions.select)) {
+        select = queryOptions.select.split(',');
+        queryOptions.select = {};
+
+        for (i = 0, length = select.length; i < length; i++) {
+          if (select[i][0] === '-') {
+            queryOptions.select[select[i].substring(1)] = 0;
+          } else {
+            queryOptions.select[select[i]] = 1;
+          }
         }
       }
     }
 
     if (queryOptions.populate) {
       if (_.isString(queryOptions.populate)) {
-        let populate = queryOptions.populate.split(',')
-        queryOptions.populate = []
+        populate = queryOptions.populate.split(',');
+        queryOptions.populate = [];
 
-        for (let i = 0, length = populate.length; i < length; i++) {
+        for (i = 0, length = populate.length; i < length; i++) {
           queryOptions.populate.push({
             path: populate[i]
-          })
+          });
 
           for (let key in queryOptions.select) {
             if (key.indexOf(populate[i] + '.') === 0) {
               if (queryOptions.populate[i].select) {
-                queryOptions.populate[i].select += ' '
+                queryOptions.populate[i].select += ' ';
               } else {
-                queryOptions.populate[i].select = ''
+                queryOptions.populate[i].select = '';
               }
 
               if (queryOptions.select[key] === 0) {
-                queryOptions.populate[i].select += '-'
+                queryOptions.populate[i].select += '-';
               }
 
-              queryOptions.populate[i].select += key.substring(populate[i].length + 1)
-              delete queryOptions.select[key]
+              queryOptions.populate[i].select += key.substring(populate[i].length + 1);
+              delete queryOptions.select[key];
             }
           }
 
           // If other specific fields are selected, add the populated field
           if (queryOptions.select) {
             if (Object.keys(queryOptions.select).length > 0 && !queryOptions.select[populate[i]]) {
-              queryOptions.select[populate[i]] = 1
-            } else if (Object.keys(queryOptions.select).length === 0) {
-              delete queryOptions.select
+              queryOptions.select[populate[i]] = 1;
+            }
+
+            if (Object.keys(queryOptions.select).length === 0) {
+              delete queryOptions.select;
             }
           }
         }
       } else if (!_.isArray(queryOptions.populate)) {
-        queryOptions.populate = [queryOptions.populate]
+        queryOptions.populate = [queryOptions.populate];
       }
     }
 
-    return queryOptions
+    return queryOptions;
   }
 
-  return function (req, res, next) {
-    const whitelist = ['distinct', 'limit', 'populate', 'query', 'select', 'skip', 'sort']
+  return function*(next) {
+    let whitelist = ['distinct', 'limit', 'populate', 'query', 'select', 'skip', 'sort']
 
-    req._ermQueryOptions = {}
+    let reqQueryParameters = this.request.query;
 
-    for (let key in req.query) {
+    let restifyContext = this.state.restifyContext;
+    let queryOptions = restifyContext.queryOptions = {};
+
+    for (let key in reqQueryParameters) {
       if (whitelist.indexOf(key) === -1) {
         continue
       }
 
       if (key === 'query') {
+
         try {
-          req._ermQueryOptions[key] = JSON.parse(req.query[key], jsonQueryParser)
+          queryOptions[key] = JSON.parse(reqQueryParameters[key], jsonQueryParser)
         } catch (e) {
-          let err = new Error('%s must be a valid JSON string')
-          err.description = 'invalid_json'
-          err.statusCode = 400
-          return options.onError(err, req, res, next)
+          let err = new Error('%s must be a valid JSON string');
+          err.description = 'invalid_json';
+          err.statusCode = 400;
+
+          throw err;
+
+          return
         }
+
       } else if (key === 'populate' || key === 'select' || key === 'sort') {
         try {
-          req._ermQueryOptions[key] = JSON.parse(req.query[key])
+          queryOptions[key] = JSON.parse(reqQueryParameters[key])
         } catch (e) {
-          req._ermQueryOptions[key] = req.query[key]
+          queryOptions[key] = reqQueryParameters[key]
         }
       } else if (key === 'limit' || key === 'skip') {
-        req._ermQueryOptions[key] = parseInt(req.query[key], 10)
+        queryOptions[key] = parseInt(reqQueryParameters[key], 10)
       } else {
-        req._ermQueryOptions[key] = req.query[key]
+        queryOptions[key] = reqQueryParameters[key]
       }
     }
 
-    req._ermQueryOptions = parseQueryOptions(req._ermQueryOptions)
+    queryOptions = parseQueryOptions(queryOptions);
 
-    next()
+    yield next;
   }
 }

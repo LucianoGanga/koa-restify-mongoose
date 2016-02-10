@@ -1,10 +1,11 @@
 {
   "author": {
-    "email": "flo.holzapfel@gmail.com",
-    "name": "Florian Holzapfel"
+    "email": "lucho_1312@hotmail.com",
+    "name": "Luciano Ganga"
   },
   "dependencies": {
     "async": "~1.5.0",
+    "koa-compose": "~2.3.0",
     "lodash": "~4.3.0",
     "mongoose-detective": "~0.1.0",
     "moredots": "~0.1.0",
@@ -13,7 +14,7 @@
   "peerDependencies": {
     "mongoose": "^4.0.0"
   },
-  "description": "Easily create a flexible REST interface for mongoose models",
+  "description": "Easily create a flexible REST interface for mongoose models in KOA",
   "devDependencies": {
     "babel-cli": "^6.4.5",
     "babel-core": "^6.4.5",
@@ -29,27 +30,27 @@
     "standard": "^6.0.0"
   },
   "engines": {
-    "node": ">=0.10"
+    "node": "^4.1.0"
   },
-  "homepage": "http://florianholzapfel.github.io/express-restify-mongoose/",
+  "homepage": "https://github.com/LucianoGanga/koa-restify-mongoose-fork",
   "keywords": [
     "ReST",
-    "express",
+    "koa",
     "restify",
     "mongodb",
     "mongoose",
     "model"
   ],
   "license": "MIT",
-  "main": "./lib/express-restify-mongoose",
-  "name": "express-restify-mongoose",
+  "main": "./lib/koa-restify-mongoose",
+  "name": "koa-restify-mongoose",
   "readmeFilename": "README.md",
   "repository": {
     "type": "git",
-    "url": "git://github.com/florianholzapfel/express-restify-mongoose.git"
+    "url": "git://github.com/LucianoGanga/koa-restify-mongoose-fork.git"
   },
   "bugs": {
-    "url": "https://github.com/florianholzapfel/express-restify-mongoose/issues"
+    "url": "https://github.com/LucianoGanga/koa-restify-mongoose-fork/issues"
   },
   "scripts": {
     "lint": "standard",
@@ -85,5 +86,5 @@
       "it"
     ]
   },
-  "version": "3.0.1"
+  "version": "0.1.0"
 }
