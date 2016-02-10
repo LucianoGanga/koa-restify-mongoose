@@ -1,5 +1,7 @@
-module.exports = function (options) {
-  return function (query, queryOptions) {
+'use strict'
+
+module.exports = function(options) {
+  return function(query, queryOptions) {
     if (!queryOptions) {
       return query
     }

@@ -1,11 +1,11 @@
-'use strict';
+'use strict'
 
 const _ = require('lodash')
 const http = require('http')
 const Filter = require('./resource_filter')
 
 module.exports = function(model, options) {
-	let buildQuery = require('./buildQuery')(options);
+	let buildQuery = require('./buildQuery')(options)
 	let filter = new Filter(model, {
 		private: options.private,
 		protected: options.protected
@@ -19,77 +19,77 @@ module.exports = function(model, options) {
 
 	function* getItems(next) {
 		// Apply a context filter first, if it exists
-		let filteredContext = yield options.contextFilter(model);
+		let filteredContext = yield options.contextFilter(model)
 
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
 		// Build the query
-		let query = buildQuery(filteredContext.find(), queryOptions);
+		let query = buildQuery(filteredContext.find(), queryOptions)
 
 		// Set read preference
-		query.read(options.readPreference);
+		query.read(options.readPreference)
 
-		let items = yield query.lean(options.lean).exec();
+		let items = yield query.lean(options.lean).exec()
 
 		// Find more parameters
-		let populate = queryOptions.populate;
+		let populate = queryOptions.populate
 		let opts = {
 			populate: populate,
 			access: restifyContext.access
-		};
+		}
 
 		// Filter items
-		items = filter.filterObject(items, opts);
+		items = filter.filterObject(items, opts)
 
-		restifyContext.result = items;
-		restifyContext.statusCode = 200;
+		restifyContext.result = items
+		restifyContext.statusCode = 200
 
 		if (options.totalCountHeader) {
-			restifyContext.totalCount = yield query.skip(0).limit(0).count().exec();
-			yield next;
+			restifyContext.totalCount = yield query.skip(0).limit(0).count().exec()
+			yield next
 		} else {
-			yield next;
+			yield next
 		}
 	}
 
 	function* getCount(next) {
 		// Apply a context filter first, if it exists
-		let filteredContext = yield options.contextFilter(model);
+		let filteredContext = yield options.contextFilter(model)
 
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
-		let count = yield buildQuery(filteredContext.count(), queryOptions).exec();
+		let count = yield buildQuery(filteredContext.count(), queryOptions).exec()
 
 		restifyContext.result = {
 			count: count
-		};
-		restifyContext.statusCode = 200;
+		}
+		restifyContext.statusCode = 200
 
-		yield next;
+		yield next
 	}
 
 	function* getShallow(next) {
 		// Apply a context filter first, if it exists
-		let filteredContext = yield options.contextFilter(model);
+		let filteredContext = yield options.contextFilter(model)
 
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
 		// Build the query
 		let item = yield buildQuery(findById(filteredContext, this.params.id), queryOptions)
 			.lean(options.lean)
 			.read(options.readPreference)
-			.exec();
+			.exec()
 
 		if (!item) {
 			let err = new Error(http.STATUS_CODES[404])
 			err.statusCode = 404
-			return options.onError(err);
+			return options.onError(err)
 		}
 
 		let populate = queryOptions.populate
@@ -107,43 +107,43 @@ module.exports = function(model, options) {
 		restifyContext.result = item
 		restifyContext.statusCode = 200
 
-		yield next;
+		yield next
 
 	}
 
 	function* deleteItems(next) {
 		// Apply a context filter first, if it exists
-		let filteredContext = yield options.contextFilter(model);
+		let filteredContext = yield options.contextFilter(model)
 
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
 		// Build and run the query
-		yield buildQuery(filteredContext.find(), queryOptions).remove();
+		yield buildQuery(filteredContext.find(), queryOptions).remove()
 
-		restifyContext.statusCode = 204;
+		restifyContext.statusCode = 204
 
-		yield next;
+		yield next
 	}
 
 	function* getItem(next) {
 		// Apply a context filter first, if it exists
-		let filteredContext = yield options.contextFilter(model);
+		let filteredContext = yield options.contextFilter(model)
 
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
 		// Build the query
 		let item = yield buildQuery(findById(filteredContext, this.params.id), queryOptions)
 			.lean(options.lean)
 			.read(options.readPreference)
-			.exec();
+			.exec()
 
 		if (!item) {
-			let err = new Error(http.STATUS_CODES[404]);
-			err.statusCode = 404;
+			let err = new Error(http.STATUS_CODES[404])
+			err.statusCode = 404
 			return options.onError(err)
 		}
 
@@ -153,126 +153,126 @@ module.exports = function(model, options) {
 			access: restifyContext.access
 		}
 
-		item = filter.filterObject(item, opts);
+		item = filter.filterObject(item, opts)
 
-		restifyContext.result = item;
-		restifyContext.statusCode = 200;
+		restifyContext.result = item
+		restifyContext.statusCode = 200
 
-		yield next;
+		yield next
 
 	}
 
 	function* deleteItem(next) {
 
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
+		let restifyContext = this.state.restifyContext
 
 		let byId = {}
 		byId[options.idProperty] = this.params.id
 
 		if (options.findOneAndRemove) {
 			// Apply a context filter first, if it exists
-			let filteredContext = yield options.contextFilter(model);
+			let filteredContext = yield options.contextFilter(model)
 
 			// Find the item and delete it
-			let item = yield findById(filteredContext, this.params.id).findOneAndRemove();
+			let item = yield findById(filteredContext, this.params.id).findOneAndRemove()
 
 			if (!item) {
-				let err = new Error(http.STATUS_CODES[404]);
-				err.statusCode = 404;
-				return options.onError(err);
+				let err = new Error(http.STATUS_CODES[404])
+				err.statusCode = 404
+				return options.onError(err)
 			}
 
 			restifyContext.statusCode = 204
 
-			yield next;
+			yield next
 
 		} else {
-			yield restifyContext.document.remove();
-			yield next;
+			yield restifyContext.document.remove()
+			yield next
 		}
 	}
 
 	function* createObject(next) {
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
 		let filterOpts = {
 			access: restifyContext.access,
 			populate: queryOptions.populate
-		};
+		}
 
-		this.request.body = filter.filterObject(this.request.body || {}, filterOpts);
+		this.request.body = filter.filterObject(this.request.body || {}, filterOpts)
 
 		if (model.schema.options._id) {
-			delete this.request.body._id;
+			delete this.request.body._id
 		}
 
 		if (model.schema.options.versionKey) {
-			delete this.request.body[model.schema.options.versionKey];
+			delete this.request.body[model.schema.options.versionKey]
 		}
 
 		let item = model.create(this.request.body).then(function(item) {
-			return model.populate(item, queryOptions.populate || []);
-		});
+			return model.populate(item, queryOptions.populate || [])
+		})
 
-		item = filter.filterObject(item, filterOpts);
+		item = filter.filterObject(item, filterOpts)
 
-		restifyContext.result = item;
-		restifyContext.statusCode = 201;
+		restifyContext.result = item
+		restifyContext.statusCode = 201
 
-		yield next;
+		yield next
 	}
 
 	function* modifyObject(next) {
 		// Get the module context and the query options
-		let restifyContext = this.state.restifyContext;
-		let queryOptions = restifyContext.queryOptions;
+		let restifyContext = this.state.restifyContext
+		let queryOptions = restifyContext.queryOptions
 
 		let filterOpts = {
 			access: restifyContext.access,
 			populate: queryOptions.populate
-		};
+		}
 
-		this.request.body = filter.filterObject(this.request.body || {}, filterOpts);
+		this.request.body = filter.filterObject(this.request.body || {}, filterOpts)
 		delete this.request.body._id
 
 		if (model.schema.options.versionKey) {
-			delete this.request.body[model.schema.options.versionKey];
+			delete this.request.body[model.schema.options.versionKey]
 		}
 
 		function depopulate(src) {
-			let dst = {};
+			let dst = {}
 
 			for (let key in src) {
-				let path = model.schema.path(key);
+				let path = model.schema.path(key)
 
 				if (path && path.caster && path.caster.instance === 'ObjectID') {
 					if (_.isArray(src[key])) {
 						for (let j = 0; j < src[key].length; ++j) {
 							if (typeof src[key][j] === 'object') {
-								dst[key] = dst[key] || {};
-								dst[key][j] = src[key][j]._id;
+								dst[key] = dst[key] || {}
+								dst[key][j] = src[key][j]._id
 							}
 						}
 					} else if (_.isPlainObject(src[key])) {
-						dst[key] = src[key]._id;
+						dst[key] = src[key]._id
 					}
 				} else if (_.isPlainObject(src[key])) {
 					if (path && path.instance === 'ObjectID') {
-						dst[key] = src[key]._id;
+						dst[key] = src[key]._id
 					} else {
-						dst[key] = depopulate(src[key]);
+						dst[key] = depopulate(src[key])
 					}
 				}
 
 				if (typeof dst[key] === 'undefined') {
-					dst[key] = src[key];
+					dst[key] = src[key]
 				}
 			}
 
-			return dst;
+			return dst
 		}
 
 		/* Recursively converts objects to dot notation
@@ -289,18 +289,18 @@ module.exports = function(model, options) {
 		 * }
 		 */
 		function flatten(src, dst, prefix) {
-			dst = dst || {};
-			prefix = prefix || '';
+			dst = dst || {}
+			prefix = prefix || ''
 
 			for (let key in src) {
 				if (_.isPlainObject(src[key])) {
-					flatten(src[key], dst, prefix + key + '.');
+					flatten(src[key], dst, prefix + key + '.')
 				} else {
-					dst[prefix + key] = src[key];
+					dst[prefix + key] = src[key]
 				}
 			}
 
-			return dst;
+			return dst
 		}
 
 		let cleanBody = flatten(depopulate(this.request.body))
@@ -308,7 +308,7 @@ module.exports = function(model, options) {
 		if (options.findOneAndUpdate) {
 
 			// Apply a context filter first, if it exists
-			let filteredContext = yield options.contextFilter(model);
+			let filteredContext = yield options.contextFilter(model)
 
 			// Build the query
 			let item = findById(filteredContext, this.params.id).findOneAndUpdate({}, {
@@ -316,14 +316,14 @@ module.exports = function(model, options) {
 			}, {
 				new: true,
 				runValidators: options.runValidators
-			}).exec();
+			}).exec()
 
-			item = yield model.populate(item, queryOptions.populate || []);
+			item = yield model.populate(item, queryOptions.populate || [])
 
 			if (!item) {
-				let err = new Error(http.STATUS_CODES[404]);
-				err.statusCode = 404;
-				return options.onError(err);
+				let err = new Error(http.STATUS_CODES[404])
+				err.statusCode = 404
+				return options.onError(err)
 			}
 
 			item = filter.filterObject(item, filterOpts)
@@ -331,23 +331,23 @@ module.exports = function(model, options) {
 			restifyContext.result = item
 			restifyContext.statusCode = 200
 
-			yield next;
+			yield next
 
 		} else {
 			for (let key in cleanBody) {
-				restifyContext.document.set(key, cleanBody[key]);
+				restifyContext.document.set(key, cleanBody[key])
 			}
 
 			let item = yield restifyContext.document.save().then(function(item) {
-				return model.populate(item, queryOptions.populate || []);
-			});
+				return model.populate(item, queryOptions.populate || [])
+			})
 
-			item = filter.filterObject(item, filterOpts);
+			item = filter.filterObject(item, filterOpts)
 
-			restifyContext.result = item;
-			restifyContext.statusCode = 200;
+			restifyContext.result = item
+			restifyContext.statusCode = 200
 
-			yield next;
+			yield next
 
 		}
 	}

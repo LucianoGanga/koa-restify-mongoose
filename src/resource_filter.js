@@ -1,3 +1,5 @@
+'use strict'
+
 const _ = require('lodash')
 const detective = require('mongoose-detective')
 const weedout = require('weedout')
@@ -10,7 +12,7 @@ const weedout = require('weedout')
  * @param {Object} opts.excludedMap {} - Filtered keys for related models
  * @param {Object} opts.filteredKeys {} - Keys to filter for the current model
  */
-function Filter (opts) {
+function Filter(opts) {
   this.model = opts.model
 
   this.filteredKeys = _.isPlainObject(opts.filteredKeys) ? {
@@ -40,7 +42,7 @@ function Filter (opts) {
  * @param {Object} opts.filteredKeys {} - Keys to filter for the current model
  * @returns {Array} - Keys to filter.
  */
-Filter.prototype.getExcluded = function (opts) {
+Filter.prototype.getExcluded = function(opts) {
   if (opts.access === 'private') {
     return []
   }
@@ -67,7 +69,7 @@ Filter.prototype.getExcluded = function (opts) {
  * @param {Array} - Keys to filter.
  * @returns {Object} - Filtered document.
  */
-Filter.prototype.filterItem = function (item, excluded) {
+Filter.prototype.filterItem = function(item, excluded) {
   if (_.isArray(item)) {
     return item.map((i) => this.filterItem(i, excluded))
   }
@@ -99,7 +101,7 @@ Filter.prototype.filterItem = function (item, excluded) {
  * @param {Object} opts.excludedMap {} - Filtered keys for related models
  * @returns {Object} - Filtered document.
  */
-Filter.prototype.filterPopulatedItem = function (item, opts) {
+Filter.prototype.filterPopulatedItem = function(item, opts) {
   if (_.isArray(item)) {
     return item.map((i) => this.filterPopulatedItem(i, opts))
   }
@@ -143,8 +145,8 @@ Filter.prototype.filterPopulatedItem = function (item, opts) {
  * @param {Array} opts.populate - Paths to populated subdocuments.
  * @returns {Object} - Filtered document.
  */
-Filter.prototype.filterObject = function (resource, opts = {}) {
-  opts = _.defaults(opts, {
+Filter.prototype.filterObject = function(resource, opts) {
+  opts = _.defaults(opts || {}, {
     access: 'public',
     excludedMap: {},
     filteredKeys: this.filteredKeys,
