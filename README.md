@@ -2,7 +2,7 @@
 
 Easily create a flexible REST interface for mongoose models in KOA.
 
-This is the first REST interface with restify and mongoose made for KOA. It's a fork from the original module [express-restify-mongoose/](https://florianholzapfel.github.io/express-restify-mongoose/)
+This is the first REST interface with restify and mongoose made for KOA. It's a fork from the original module [express-restify-mongoose/](https://florianholzapfel.github.io/express-restify-mongoose/) by florianholzapfel.
 
 Note: This module started with version 3.0.1 of the express repository. So, just to keep both versions number aligned, this module will start with the same version.
 
@@ -25,6 +25,12 @@ All functionality is supported except for the postMiddleware function (feel free
 Found a bug or have a suggestion to make? Have a took at [issues or open a new one](https://github.com/LucianoGanga/koa-restify-mongoose/issues).
 
 Everyone is welcome to contribute code by [creating a pull request](https://github.com/LucianoGanga/koa-restify-mongoose/pulls), just make sure to follow [standard style](https://github.com/feross/standard).
+
+## TODO
+- Adapt all the test to KOA
+- Adapt all the examples to KOA
+- Format correctly to standardjs
+- Fix postMiddleware
 
 
 ## License (MIT)
