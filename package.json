@@ -32,7 +32,7 @@
   "engines": {
     "node": "^4.1.0"
   },
-  "homepage": "https://github.com/LucianoGanga/koa-restify-mongoose-fork",
+  "homepage": "https://github.com/LucianoGanga/koa-restify-mongoose",
   "keywords": [
     "ReST",
     "koa",
@@ -47,10 +47,10 @@
   "readmeFilename": "README.md",
   "repository": {
     "type": "git",
-    "url": "git://github.com/LucianoGanga/koa-restify-mongoose-fork.git"
+    "url": "git://github.com/LucianoGanga/koa-restify-mongoose.git"
   },
   "bugs": {
-    "url": "https://github.com/LucianoGanga/koa-restify-mongoose-fork/issues"
+    "url": "https://github.com/LucianoGanga/koa-restify-mongoose/issues"
   },
   "scripts": {
     "lint": "standard",

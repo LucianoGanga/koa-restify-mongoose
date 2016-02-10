@@ -1,37 +1,36 @@
-# express-restify-mongoose
+# koa-restify-mongoose
 
-Easily create a flexible REST interface for mongoose models.
+Easily create a flexible REST interface for mongoose models in KOA.
 
-[![Build Status](https://travis-ci.org/florianholzapfel/express-restify-mongoose.png)](https://travis-ci.org/florianholzapfel/express-restify-mongoose)
-[![Coverage Status](https://coveralls.io/repos/florianholzapfel/express-restify-mongoose/badge.svg?branch=master&service=github)](https://coveralls.io/github/florianholzapfel/express-restify-mongoose?branch=master)
-[![NPM version](https://badge.fury.io/js/express-restify-mongoose.png)](http://badge.fury.io/js/express-restify-mongoose)
-[![Dependencies](https://david-dm.org/florianholzapfel/express-restify-mongoose.png)](https://david-dm.org/florianholzapfel/express-restify-mongoose)
-[![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat)](https://github.com/feross/standard)
+This is the first REST interface with restify and mongoose made for KOA. It's a fork from the original module [express-restify-mongoose/](https://florianholzapfel.github.io/express-restify-mongoose/)
+
+Note: This module started with version 3.0.1 of the express repository. So, just to keep both versions number aligned, this module will start with the same version.
 
 ## Getting started
 
-> **From 1.0.0 onwards, the library is only compatible with mongoose >= 4. For mongoose 3.x compatibility, use the 0.7.x branch.**
+> The library is only compatible with mongoose >= 4
 
 ```sh
-npm install express-restify-mongoose --save
+npm install koa-restify-mongoose --save
 ```
 
 ## Documentation
 
-[https://florianholzapfel.github.io/express-restify-mongoose/](https://florianholzapfel.github.io/express-restify-mongoose/)
+The documentation is the same than in [https://florianholzapfel.github.io/express-restify-mongoose/](https://florianholzapfel.github.io/express-restify-mongoose/).
+
+All functionality is supported except for the postMiddleware function (feel free to fix it if you want)
 
 ## Contributing
 
-Found a bug or have a suggestion to make? Have a took at [issues or open a new one](https://github.com/florianholzapfel/express-restify-mongoose/issues).
+Found a bug or have a suggestion to make? Have a took at [issues or open a new one](https://github.com/LucianoGanga/koa-restify-mongoose/issues).
 
-Everyone is welcome to contribute code by [creating a pull request](https://github.com/florianholzapfel/express-restify-mongoose/pulls), just make sure to follow [standard style](https://github.com/feross/standard).
+Everyone is welcome to contribute code by [creating a pull request](https://github.com/LucianoGanga/koa-restify-mongoose/pulls), just make sure to follow [standard style](https://github.com/feross/standard).
 
-Many thanks to all [contributors](https://github.com/florianholzapfel/express-restify-mongoose/graphs/contributors)!
 
 ## License (MIT)
 
 ```
-Copyright (C) 2013 by Florian Holzapfel
+Copyright (C) 2016 by Luciano Ganga
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
