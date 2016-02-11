@@ -213,7 +213,7 @@ module.exports = function(model, options) {
 			delete this.request.body[model.schema.options.versionKey]
 		}
 
-		let item = model.create(this.request.body)
+		let item = yield model.create(this.request.body)
 
 		yield model.populate(item, queryOptions.populate || [])
 
