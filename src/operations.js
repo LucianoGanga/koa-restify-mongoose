@@ -213,9 +213,9 @@ module.exports = function(model, options) {
 			delete this.request.body[model.schema.options.versionKey]
 		}
 
-		let item = model.create(this.request.body).then(function(item) {
-			return model.populate(item, queryOptions.populate || [])
-		})
+		let item = model.create(this.request.body)
+
+		yield model.populate(item, queryOptions.populate || [])
 
 		item = filter.filterObject(item, filterOpts)
 
@@ -311,7 +311,7 @@ module.exports = function(model, options) {
 			let filteredContext = yield options.contextFilter(model)
 
 			// Build the query
-			let item = findById(filteredContext, this.params.id).findOneAndUpdate({}, {
+			let item = yield findById(filteredContext, this.params.id).findOneAndUpdate({}, {
 				$set: cleanBody
 			}, {
 				new: true,
@@ -327,7 +327,6 @@ module.exports = function(model, options) {
 			}
 
 			item = filter.filterObject(item, filterOpts)
-
 			restifyContext.result = item
 			restifyContext.statusCode = 200
 
@@ -338,9 +337,8 @@ module.exports = function(model, options) {
 				restifyContext.document.set(key, cleanBody[key])
 			}
 
-			let item = yield restifyContext.document.save().then(function(item) {
-				return model.populate(item, queryOptions.populate || [])
-			})
+			let item = yield restifyContext.document.save()
+			yield model.populate(item, queryOptions.populate || [])
 
 			item = filter.filterObject(item, filterOpts)
 
