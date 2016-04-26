@@ -6,9 +6,12 @@ const Filter = require('./resource_filter')
 
 module.exports = function(model, options) {
 	let buildQuery = require('./buildQuery')(options)
-	let filter = new Filter(model, {
-		private: options.private,
-		protected: options.protected
+	let filter = new Filter({
+		model: model,
+		filteredKeys: {
+			private: options.private,
+			protected: options.protected
+		}
 	})
 
 	function findById(filteredContext, id) {

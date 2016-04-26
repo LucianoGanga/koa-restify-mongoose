@@ -75,7 +75,9 @@ const restify = function(app, model, opts) {
 	})
 
 	options.filter = new Filter({
-		model, excludedMap, filteredKeys: {
+		model: model,
+		excludedMap: excludedMap,
+		filteredKeys: {
 			private: options.private,
 			protected: options.protected
 		}
